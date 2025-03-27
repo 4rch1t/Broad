@@ -1541,7 +1541,7 @@ exports.uploadCareerDocument = async (req, res) => {
     const newDocument = {
       name: req.body.name || req.file.originalname,
       type: req.body.type || 'other',
-      url: req.file.location || `/uploads/${req.file.filename}`,
+      url: `/uploads/${req.file.filename}`,
       uploadedBy: req.user.id,
       uploadedAt: Date.now()
     };

@@ -1,36 +1,25 @@
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
-const aws = require('aws-sdk');
-const multerS3 = require('multer-s3');
+const fs = require('fs');
 const logger = require('../utils/logger');
-
-// Configure AWS S3
-const s3 = new aws.S3({
-  accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-  region: process.env.AWS_REGION
-});
-
-// Check if we should use S3 or local storage
-const useS3 = process.env.STORAGE_TYPE === 's3';
 
 // Define file filter
 const fileFilter = (req, file, cb) => {
   // Allow images, videos, PDFs, and documents
   const allowedFileTypes = [
-    'image/jpeg', 
-    'image/png', 
-    'image/gif', 
-    'video/mp4', 
-    'video/quicktime', 
+    'image/jpeg',
+    'image/png',
+    'image/gif',
+    'video/mp4',
+    'video/quicktime',
     'application/pdf',
     'application/msword',
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/vnd.ms-excel',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
   ];
-  
+
   if (allowedFileTypes.includes(file.mimetype)) {
     cb(null, true);
   } else {
@@ -46,33 +35,22 @@ const generateFileName = (file) => {
   return `${timestamp}-${randomString}${extension}`;
 };
 
-// Configure storage
-let storage;
-
-if (useS3) {
-  // S3 storage
-  storage = multerS3({
-    s3: s3,
-    bucket: process.env.AWS_BUCKET_NAME,
-    acl: 'public-read',
-    contentType: multerS3.AUTO_CONTENT_TYPE,
-    key: (req, file, cb) => {
-      const folder = req.uploadFolder || 'uploads';
-      const fileName = generateFileName(file);
-      cb(null, `${folder}/${fileName}`);
-    }
-  });
-} else {
-  // Local storage
-  storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-      cb(null, path.join(__dirname, '../uploads'));
-    },
-    filename: (req, file, cb) => {
-      cb(null, generateFileName(file));
-    }
-  });
+// Ensure uploads directory exists
+const uploadsDir = path.join(__dirname, '../uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+  logger.info('Created uploads directory');
 }
+
+// Configure storage - using local storage only
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (req, file, cb) => {
+    cb(null, generateFileName(file));
+  }
+});
 
 // Configure multer
 const upload = multer({

@@ -257,7 +257,7 @@ exports.uploadVideo = async (req, res) => {
     const newVideo = {
       title: req.body.title || 'Performance Video',
       description: req.body.description || '',
-      url: req.file.location || `/uploads/${req.file.filename}`,
+      url: `/uploads/${req.file.filename}`,
       uploadedAt: Date.now(),
       uploadedBy: req.user.id
     };

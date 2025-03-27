@@ -142,8 +142,8 @@ exports.uploadProfilePicture = async (req, res) => {
       });
     }
 
-    // Update profile picture URL (assuming middleware has uploaded to S3 or similar)
-    athlete.profilePicture = req.file.location || `/uploads/${req.file.filename}`;
+    // Update profile picture URL
+    athlete.profilePicture = `/uploads/${req.file.filename}`;
     await athlete.save();
 
     res.status(200).json({
@@ -329,7 +329,7 @@ exports.addDocument = async (req, res) => {
     const newDocument = {
       name: req.body.name || req.file.originalname,
       type: req.body.type || 'other',
-      url: req.file.location || `/uploads/${req.file.filename}`,
+      url: `/uploads/${req.file.filename}`,
       uploadedAt: Date.now()
     };
 
