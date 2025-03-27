@@ -41,8 +41,30 @@ app.use('/api/injury', injuryRoutes);
 app.use('/api/financial', financialRoutes);
 
 // Health check endpoint
-app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', message: 'Server is running' });
+app.get('/health', async (req, res) => {
+  // Check MongoDB connection
+  const mongoStatus = mongoose.connection.readyState === 1 ? 'connected' : 'disconnected';
+
+  // Check PostgreSQL connection
+  let pgStatus = 'disconnected';
+  try {
+    await sequelize.authenticate({ timeout: 2000 });
+    pgStatus = 'connected';
+  } catch (error) {
+    logger.error('PostgreSQL health check failed:', error);
+  }
+
+  const dbStatus = {
+    mongodb: mongoStatus,
+    postgresql: pgStatus
+  };
+
+  res.status(200).json({
+    status: 'ok',
+    message: 'Server is running',
+    environment: process.env.NODE_ENV || 'development',
+    databases: dbStatus
+  });
 });
 
 // Error handling middleware
@@ -58,18 +80,28 @@ app.use((err, req, res, next) => {
 const connectDB = async () => {
   try {
     // MongoDB connection
-    await mongoose.connect(process.env.MONGODB_URI, {
+    const mongoURI = process.env.MONGODB_URI;
+    if (!mongoURI) {
+      throw new Error('MongoDB connection string is not defined in environment variables');
+    }
+
+    logger.info('Connecting to MongoDB...');
+    await mongoose.connect(mongoURI, {
       useNewUrlParser: true,
-      useUnifiedTopology: true
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000 // Timeout after 5s instead of 30s
     });
-    logger.info('MongoDB connected');
+    logger.info('MongoDB connected successfully');
 
     // PostgreSQL connection
+    logger.info('Connecting to PostgreSQL...');
     await sequelize.authenticate();
-    logger.info('PostgreSQL connected');
+    logger.info('PostgreSQL connected successfully');
   } catch (error) {
     logger.error('Database connection error:', error);
-    process.exit(1);
+    // Don't exit the process immediately, allow the server to start
+    // and serve the health endpoint even if DB connection fails
+    // process.exit(1);
   }
 };
 
